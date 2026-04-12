@@ -165,49 +165,69 @@ elif menu == "⚙️ إدارة السلع":
             st.rerun()
 
 # --- الحقوق في الأسفل ---
-st.markdown("<div class='footer-rights'>حقوق النظام محفوظة لـ مسؤول القسم: أيوب هاني © 2026</div>", unsafe_allow_html=True)
-# --- كود الحل النهائي لمشكلة الطباعة (يُوضع في آخر السطر في الملف) ---
+st.markdown("<div class='footer-rights'>حقوق النظام محفوظة لـ مسؤول القسم: أيوب هاني © 2026</div>", unsafe_allow_html=
+            # --- كود المحرك الاحترافي للطباعة (يُوضع في نهاية الملف) ---
 
-if 'report_ready' in st.session_state or 'active_bill' in st.session_state or 'print_item' in st.session_state:
-    # تحديد البيانات المراد طباعتها (سواء كانت زبون إنترنت أو جرد مخبز)
-    p_data = st.session_state.get('print_item') or st.session_state.get('active_bill') or st.session_state.get('report_ready')
-    
+import base64
+
+def get_print_html(content_html):
+    """تحويل المحتوى إلى رابط صفحة مستقلة لتجاوز حظر المتصفح"""
+    full_html = f"<html><body style='direction:rtl; font-family:sans-serif; padding:20px;'>{content_html}</body></html>"
+    b64 = base64.b64encode(full_html.encode()).decode()
+    return f"data:text/html;base64,{b64}"
+
+if 'report_ready' in st.session_state:
     st.markdown("---")
-    st.subheader("🏁 منطقة الطباعة النهائية")
-
-    # كود Script لإجبار المتصفح على فتح نافذة الطباعة
-    html_layout = f"""
-    <div id="print_box" style="direction:rtl; text-align:right; font-family: 'Cairo', sans-serif; padding:20px; border:1px solid #ccc; background:white; color:black;">
-        <h2 style="text-align:center;">تقرير رسمي - إدارة أيوب هاني</h2>
-        <hr>
-        <p><b>التاريخ:</b> {datetime.date.today()}</p>
-        <div style="font-size:18px;">
-            {p_data if isinstance(p_data, str) else "بيانات التقرير جاهزة للطباعة أدناه"}
-        </div>
-        <hr>
-        <p style="text-align:left;">توقيع المسؤول: أيوب هاني</p>
-    </div>
+    st.subheader("🖨️ بوابة الطباعة النهائية")
     
-    <script>
-    function forcePrint() {{
-        var content = document.getElementById('print_box').innerHTML;
-        var myWindow = window.open('', '', 'width=900,height=900');
-        myWindow.document.write('<html><head><title>Print Report</title>');
-        myWindow.document.write('<style>body{{direction:rtl; font-family:sans-serif; padding:20px;}}</style></head><body>');
-        myWindow.document.write(content);
-        myWindow.document.write('</body></html>');
-        myWindow.document.close();
-        myWindow.focus();
-        setTimeout(function() {{ myWindow.print(); myWindow.close(); }}, 500);
-    }}
-    </script>
-    <button onclick="forcePrint()" style="width:100%; background-color:#000; color:white; padding:20px; border-radius:15px; font-size:20px; font-weight:bold; cursor:pointer; border:none;">
-        🖨️ اضغط هنا لإجبار الموبايل على الطباعة (حل نهائي)
-    </button>
+    # بناء جدول البيانات بدقة لمنع دمج النصوص
+    report_items = st.session_state.report_ready
+    table_rows = "".join([
+        f"<tr>"
+        f"<td style='border:1px solid black; padding:8px;'>{item['السلعة']}</td>"
+        f"<td style='border:1px solid black; padding:8px; text-align:center;'>{item['الموجود']}</td>"
+        f"<td style='border:1px solid black; padding:8px; text-align:center;'>{item['التوصية'] if item['التوصية'] > 0 else '-'}</td>"
+        f"</tr>" 
+        for item in report_items
+    ])
+    
+    final_content = f"""
+    <div style="text-align:center; border:2px solid black; padding:20px;">
+        <h1>مخابز باب الآغا</h1>
+        <h3>جرد قسم التوست - الشفت الصباحي</h3>
+        <p>التاريخ: {datetime.date.today()}</p>
+        <table style="width:100%; border-collapse:collapse; direction:rtl;">
+            <thead>
+                <tr style="background:#eee;">
+                    <th style="border:1px solid black; padding:8px;">السلعة</th>
+                    <th style="border:1px solid black; padding:8px;">الموجود</th>
+                    <th style="border:1px solid black; padding:8px;">التوصية</th>
+                </tr>
+            </thead>
+            <tbody>{table_rows}</tbody>
+        </table>
+        <br><br>
+        <div style="text-align:left; margin-left:20px;">
+            <p>توقيع مسؤول القسم:</p>
+            <p><b>أيوب هاني</b></p>
+        </div>
+    </div>
     """
-    st.markdown(html_layout, unsafe_allow_html=True)
 
-    if st.button("❌ إنهاء وإغلاق منطقة الطباعة"):
-        for key in ['report_ready', 'active_bill', 'print_item']:
-            if key in st.session_state: del st.session_state[key]
+    # إنشاء رابط الصفحة المستقلة
+    href = get_print_html(final_content)
+    
+    st.markdown(f"""
+        <div style="background:#f0f2f6; padding:20px; border-radius:15px; text-align:center;">
+            <p>بسبب قيود الموبايل، يرجى الضغط على الرابط أدناه لفتح التقرير في صفحة مستقلة، ثم اختر 'طباعة' من قائمة المتصفح:</p>
+            <a href="{href}" target="_blank" style="text-decoration:none;">
+                <button style="width:100%; background:#1e3a8a; color:white; padding:15px; border-radius:10px; font-size:18px; font-weight:bold; cursor:pointer; border:none;">
+                    🔗 افتح التقرير للطباعة (نسخة الموبايل)
+                </button>
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
+
+    if st.button("✅ إنهاء الجرد"):
+        del st.session_state.report_ready
         st.rerun()
