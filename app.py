@@ -164,8 +164,9 @@ elif menu == "⚙️ إدارة السلع":
             df_items.drop(i).to_csv(DB_FILE, index=False)
             st.rerun()
 
-# --- الحقوق في الأسفل ---
-st.markdown("<div class='footer-rights'>حقوق النظام محفوظة لـ مسؤول القسم: أيوب هاني © 2026</div>", unsafe_allow_html=
+st.markdown("<div class='footer-rights'>حقوق النظام محفوظة لـ مسؤول القسم: أيوب هاني © 2026</div>", unsafe_allow_html=True)
+
+
 # --- كود المحرك الاحترافي للطباعة (يُوضع في نهاية الملف) ---
 
 import base64
