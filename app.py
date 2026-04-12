@@ -166,3 +166,48 @@ elif menu == "⚙️ إدارة السلع":
 
 # --- الحقوق في الأسفل ---
 st.markdown("<div class='footer-rights'>حقوق النظام محفوظة لـ مسؤول القسم: أيوب هاني © 2026</div>", unsafe_allow_html=True)
+# --- كود الحل النهائي لمشكلة الطباعة (يُوضع في آخر السطر في الملف) ---
+
+if 'report_ready' in st.session_state or 'active_bill' in st.session_state or 'print_item' in st.session_state:
+    # تحديد البيانات المراد طباعتها (سواء كانت زبون إنترنت أو جرد مخبز)
+    p_data = st.session_state.get('print_item') or st.session_state.get('active_bill') or st.session_state.get('report_ready')
+    
+    st.markdown("---")
+    st.subheader("🏁 منطقة الطباعة النهائية")
+
+    # كود Script لإجبار المتصفح على فتح نافذة الطباعة
+    html_layout = f"""
+    <div id="print_box" style="direction:rtl; text-align:right; font-family: 'Cairo', sans-serif; padding:20px; border:1px solid #ccc; background:white; color:black;">
+        <h2 style="text-align:center;">تقرير رسمي - إدارة أيوب هاني</h2>
+        <hr>
+        <p><b>التاريخ:</b> {datetime.date.today()}</p>
+        <div style="font-size:18px;">
+            {p_data if isinstance(p_data, str) else "بيانات التقرير جاهزة للطباعة أدناه"}
+        </div>
+        <hr>
+        <p style="text-align:left;">توقيع المسؤول: أيوب هاني</p>
+    </div>
+    
+    <script>
+    function forcePrint() {{
+        var content = document.getElementById('print_box').innerHTML;
+        var myWindow = window.open('', '', 'width=900,height=900');
+        myWindow.document.write('<html><head><title>Print Report</title>');
+        myWindow.document.write('<style>body{{direction:rtl; font-family:sans-serif; padding:20px;}}</style></head><body>');
+        myWindow.document.write(content);
+        myWindow.document.write('</body></html>');
+        myWindow.document.close();
+        myWindow.focus();
+        setTimeout(function() {{ myWindow.print(); myWindow.close(); }}, 500);
+    }}
+    </script>
+    <button onclick="forcePrint()" style="width:100%; background-color:#000; color:white; padding:20px; border-radius:15px; font-size:20px; font-weight:bold; cursor:pointer; border:none;">
+        🖨️ اضغط هنا لإجبار الموبايل على الطباعة (حل نهائي)
+    </button>
+    """
+    st.markdown(html_layout, unsafe_allow_html=True)
+
+    if st.button("❌ إنهاء وإغلاق منطقة الطباعة"):
+        for key in ['report_ready', 'active_bill', 'print_item']:
+            if key in st.session_state: del st.session_state[key]
+        st.rerun()
