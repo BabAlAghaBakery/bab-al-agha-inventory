@@ -191,27 +191,32 @@ def get_print_html(content_html):
 
 if 'report_ready' in st.session_state:
   st.markdown("---")
-  st.subheader("🖨️ بوابة الطباعة النهائية")
+# تأكد أن هذا الكود يبدأ من بداية السطر تماماً بدون أي فراغ (Space)
+if 'report_ready' in st.session_state:
+    st.markdown("---")
+    st.subheader("🖨️ بوابة الطباعة النهائية")
 
     # 1. بناء جدول السلع (النواقص والتوصيات فقط)
+    report_items = st.session_state.report_ready
     table_rows = "".join([
         f"<tr>"
-        f"<td style='border:1px solid black; padding:8px;'>{item['السلعة']}</td>"
-        f"<td style='border:1px solid black; padding:8px; text-align:center;'>{item['الموجود']}</td>"
-        f"<td style='border:1px solid black; padding:8px; text-align:center;'>{item['التوصية'] if item['التوصية'] > 0 else '-'}</td>"
+        f"<td style='border:1px solid black; padding:8px;'>{item.get('السلعة', item.get('الاسم', ''))}</td>"
+        f"<td style='border:1px solid black; padding:8px; text-align:center;'>{item.get('الموجود', item.get('موجود', 0))}</td>"
+        f"<td style='border:1px solid black; padding:8px; text-align:center;'>{item.get('التوصية', item.get('طلب', '-'))}</td>"
         f"</tr>" 
-        for item in report_items if item['التوصية'] > 0 or item['الموجود'] <= 10  # عرض النواقص فقط
+        for item in report_items if item.get('التوصية', item.get('طلب', 0)) != 0
     ])
 
-    # 2. بناء قسم الوصايا الإضافية (هذا هو الجزء الذي كان ينقصك)
+    # 2. بناء قسم الوصايا الإضافية
     orders_html = ""
-    if not df_orders.empty:
-        orders_html = "<div style='text-align:right;'><h3>🛒 وصايا وطلبيات إضافية:</h3><ul>"
-        for _, r in df_orders.iterrows():
-            orders_html += f"<li><b>{r['الطلب']}:</b> {r['التفاصيل']}</li>"
-        orders_html += "</ul></div><hr>"
+    if 'df_orders' in locals() or 'df_orders' in globals():
+        if not df_orders.empty:
+            orders_html = "<div style='text-align:right;'><h3>🛒 وصايا وطلبيات إضافية:</h3><ul>"
+            for _, r in df_orders.iterrows():
+                orders_html += f"<li><b>{r['الطلب']}:</b> {r['التفاصيل']}</li>"
+            orders_html += "</ul></div><hr>"
 
-    # 3. تجميع المحتوى النهائي للطباعة
+    # 3. تجميع المحتوى النهائي
     final_content = f"""
     <div style="text-align:center; border:2px solid black; padding:20px; background-color:white; color:black; direction:rtl;">
         <h1>مخابز باب الآغا</h1>
@@ -238,3 +243,13 @@ if 'report_ready' in st.session_state:
     </div>
     """
 
+    # إنشاء رابط الطباعة
+    import base64
+    full_print_html = f"<html><head><meta charset='UTF-8'></head><body style='direction:rtl;'>{final_content}</body></html>"
+    href = f"data:text/html;charset=utf-8;base64,{base64.b64encode(full_print_html.encode('utf-8')).decode()}"
+    
+    st.markdown(f'<a href="{href}" target="_blank"><button style="width:100%; background:#1e3a8a; color:white; padding:15px; border-radius:10px;">🔗 افتح التقرير للطباعة (بما في ذلك الوصايا)</button></a>', unsafe_allow_html=True)
+
+    if st.button("✅ إنهاء الجرد"):
+        del st.session_state.report_ready
+        st.rerun()
