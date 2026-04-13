@@ -201,66 +201,85 @@ def get_print_html(content_html):
 
 
 if 'report_ready' in st.session_state:
-  st.markdown("---")
-# تأكد أن هذا الكود يبدأ من بداية السطر تماماً بدون أي فراغ (Space)
-if 'report_ready' in st.session_state:
     st.markdown("---")
     st.subheader("🖨️ بوابة الطباعة النهائية")
 
-    # 1. بناء جدول السلع (النواقص والتوصيات فقط)
+    # جلب الوقت الحالي بتنسيق جميل
+    current_time = datetime.datetime.now().strftime("%I:%M %p")
     report_items = st.session_state.report_ready
-    table_rows = "".join([
-        f"<tr>"
-        f"<td style='border:1px solid black; padding:8px;'>{item.get('السلعة', item.get('الاسم', ''))}</td>"
-        f"<td style='border:1px solid black; padding:8px; text-align:center;'>{item.get('الموجود', item.get('موجود', 0))}</td>"
-        f"<td style='border:1px solid black; padding:8px; text-align:center;'>{item.get('التوصية', item.get('طلب', '-'))}</td>"
-        f"</tr>" 
-        for item in report_items if item.get('التوصية', item.get('طلب', 0)) != 0
-    ])
+
+    # 1. بناء جدول السلع مع خانة الملاحظات والوقت
+    table_rows = ""
+    for item in report_items:
+        # سنعرض هنا كل السلع لضمان عدم اختفاء الجدول، مع تمييز النواقص
+        row_style = "background-color: #ffcccc;" if item.get('حالة') == "🔴 نقص" else ""
+        table_rows += f"""
+        <tr style="{row_style}">
+            <td style='border:1px solid black; padding:8px;'>{item.get('الاسم', '')}</td>
+            <td style='border:1px solid black; padding:8px; text-align:center;'>{item.get('موجود', 0)}</td>
+            <td style='border:1px solid black; padding:8px; text-align:center;'>{item.get('طلب', '-')}</td>
+            <td style='border:1px solid black; padding:8px; text-align:right;'>{item.get('ملاحظة', 'لا يوجد')}</td>
+        </tr>
+        """
 
     # 2. بناء قسم الوصايا الإضافية
     orders_html = ""
-    if 'df_orders' in locals() or 'df_orders' in globals():
-        if not df_orders.empty:
-            orders_html = "<div style='text-align:right;'><h3>🛒 وصايا وطلبيات إضافية:</h3><ul>"
-            for _, r in df_orders.iterrows():
-                orders_html += f"<li><b>{r['الطلب']}:</b> {r['التفاصيل']}</li>"
-            orders_html += "</ul></div><hr>"
+    if not df_orders.empty:
+        orders_html = "<div style='text-align:right;'><h3>🛒 وصايا وطلبيات إضافية:</h3><ul>"
+        for _, r in df_orders.iterrows():
+            orders_html += f"<li><b>{r['الطلب']}:</b> {r['التفاصيل']}</li>"
+        orders_html += "</ul></div><hr>"
 
     # 3. تجميع المحتوى النهائي
     final_content = f"""
-    <div style="text-align:center; border:2px solid black; padding:20px; background-color:white; color:black; direction:rtl;">
-        <h1>مخابز باب الآغا</h1>
-        <h3>جرد قسم التوست - الشفت الصباحي</h3>
-        <p>التاريخ: {datetime.date.today()}</p>
-        <hr>
+    <div style="text-align:center; border:2px solid black; padding:20px; background-color:white; color:black; direction:rtl; font-family: Arial, sans-serif;">
+        <h1 style="margin:0;">مخابز باب الآغا 🥖</h1>
+        <h2 style="margin:5px;">تقرير جرد وتوصيات قسم التوست</h2>
+        <p><b>التاريخ:</b> {datetime.date.today()} | <b>الوقت:</b> {current_time}</p>
+        <p><b>المسؤول المباشر:</b> أيوب هاني</p>
+        <hr style="border: 1px solid #333;">
+        
         {orders_html}
-        <h3>📊 جدول النواقص والتوصيات:</h3>
+        
+        <h3>📊 تفاصيل جرد الأصناف:</h3>
         <table style="width:100%; border-collapse:collapse; direction:rtl;">
             <thead>
-                <tr style="background:#eee;">
-                    <th style="border:1px solid black; padding:8px;">السلعة</th>
-                    <th style="border:1px solid black; padding:8px;">الموجود</th>
-                    <th style="border:1px solid black; padding:8px;">التوصية</th>
+                <tr style="background:#1e3a8a; color:white;">
+                    <th style="border:1px solid black; padding:10px;">السلعة</th>
+                    <th style="border:1px solid black; padding:10px;">الموجود</th>
+                    <th style="border:1px solid black; padding:10px;">التوصية</th>
+                    <th style="border:1px solid black; padding:10px;">ملاحظات</th>
                 </tr>
             </thead>
             <tbody>{table_rows}</tbody>
         </table>
+        
         <br><br>
-        <div style="text-align:left; margin-left:20px;">
-            <p>توقيع مسؤول القسم:</p>
-            <p><b>أيوب هاني</b></p>
+        <div style="display: flex; justify-content: space-between; margin-top: 30px; border-top: 1px dashed #ccc; padding-top: 10px;">
+            <p>ختم الإدارة: ________</p>
+            <p>توقيع أيوب هاني: ________</p>
         </div>
+        <p style="font-size: 10px; color: #666;">تم استخراج هذا التقرير آلياً بواسطة نظام باب الآغا الذكي © 2026</p>
     </div>
     """
 
-    # إنشاء رابط الطباعة
+    # إنشاء رابط الطباعة مع دعم اللغة العربية
     import base64
-    full_print_html = f"<html><head><meta charset='UTF-8'></head><body style='direction:rtl;'>{final_content}</body></html>"
-    href = f"data:text/html;charset=utf-8;base64,{base64.b64encode(full_print_html.encode('utf-8')).decode()}"
+    full_print_html = f"<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body>{final_content}</body></html>"
+    b64 = base64.b64encode(full_print_html.encode('utf-8')).decode()
+    href = f"data:text/html;charset=utf-8;base64,{b64}"
     
-    st.markdown(f'<a href="{href}" target="_blank"><button style="width:100%; background:#1e3a8a; color:white; padding:15px; border-radius:10px;">🔗 افتح التقرير للطباعة (بما في ذلك الوصايا)</button></a>', unsafe_allow_html=True)
+    st.markdown(f'''
+        <div style="background:#f0f2f6; padding:20px; border-radius:15px; text-align:center;">
+            <p>✅ تم تجهيز التقرير بنجاح شاملة الوقت والملاحظات.</p>
+            <a href="{href}" target="_blank">
+                <button style="width:100%; background:#1e3a8a; color:white; padding:15px; border:none; border-radius:10px; cursor:pointer; font-weight:bold;">
+                    📄 افتح التقرير الكامل للطباعة
+                </button>
+            </a>
+        </div>
+    ''', unsafe_allow_html=True)
 
-    if st.button("✅ إنهاء الجرد"):
+    if st.button("✅ إنهاء الجرد وإغلاق التقرير"):
         del st.session_state.report_ready
         st.rerun()
