@@ -191,24 +191,35 @@ def get_print_html(content_html):
 
 if 'report_ready' in st.session_state:
     st.markdown("---")
-    st.subheader("🖨️ بوابة الطباعة النهائية")
-    
-    # بناء جدول البيانات بدقة لمنع دمج النصوص
-    report_items = st.session_state.report_ready
+        st.subheader("🖨️ بوابة الطباعة النهائية")
+
+    # 1. بناء جدول السلع (النواقص والتوصيات فقط)
     table_rows = "".join([
         f"<tr>"
         f"<td style='border:1px solid black; padding:8px;'>{item['السلعة']}</td>"
         f"<td style='border:1px solid black; padding:8px; text-align:center;'>{item['الموجود']}</td>"
         f"<td style='border:1px solid black; padding:8px; text-align:center;'>{item['التوصية'] if item['التوصية'] > 0 else '-'}</td>"
         f"</tr>" 
-        for item in report_items
+        for item in report_items if item['التوصية'] > 0 or item['الموجود'] <= 10  # عرض النواقص فقط
     ])
-    
+
+    # 2. بناء قسم الوصايا الإضافية (هذا هو الجزء الذي كان ينقصك)
+    orders_html = ""
+    if not df_orders.empty:
+        orders_html = "<div style='text-align:right;'><h3>🛒 وصايا وطلبيات إضافية:</h3><ul>"
+        for _, r in df_orders.iterrows():
+            orders_html += f"<li><b>{r['الطلب']}:</b> {r['التفاصيل']}</li>"
+        orders_html += "</ul></div><hr>"
+
+    # 3. تجميع المحتوى النهائي للطباعة
     final_content = f"""
-    <div style="text-align:center; border:2px solid black; padding:20px;">
+    <div style="text-align:center; border:2px solid black; padding:20px; background-color:white; color:black; direction:rtl;">
         <h1>مخابز باب الآغا</h1>
         <h3>جرد قسم التوست - الشفت الصباحي</h3>
         <p>التاريخ: {datetime.date.today()}</p>
+        <hr>
+        {orders_html}
+        <h3>📊 جدول النواقص والتوصيات:</h3>
         <table style="width:100%; border-collapse:collapse; direction:rtl;">
             <thead>
                 <tr style="background:#eee;">
@@ -227,20 +238,3 @@ if 'report_ready' in st.session_state:
     </div>
     """
 
-    # إنشاء رابط الصفحة المستقلة
-    href = get_print_html(final_content)
-    
-    st.markdown(f"""
-        <div style="background:#f0f2f6; padding:20px; border-radius:15px; text-align:center;">
-            <p>بسبب قيود الموبايل، يرجى الضغط على الرابط أدناه لفتح التقرير في صفحة مستقلة، ثم اختر 'طباعة' من قائمة المتصفح:</p>
-            <a href="{href}" target="_blank" style="text-decoration:none;">
-                <button style="width:100%; background:#1e3a8a; color:white; padding:15px; border-radius:10px; font-size:18px; font-weight:bold; cursor:pointer; border:none;">
-                    🔗 افتح التقرير للطباعة (نسخة الموبايل)
-                </button>
-            </a>
-        </div>
-    """, unsafe_allow_html=True)
-
-    if st.button("✅ إنهاء الجرد"):
-        del st.session_state.report_ready
-        st.rerun()
