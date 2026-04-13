@@ -147,3 +147,68 @@ elif menu == "⚙️ إدارة الأصناف":
         if c2.button("حذف", key=f"d_{i}"):
             df_items.drop(i).to_csv(DB_FILE, index=False)
             st.rerun()
+# --- كود المحرك الاحترافي للطباعة (يُوضع في نهاية الملف) ---
+
+import base64
+
+def get_print_html(content_html):
+    """تحويل المحتوى إلى رابط صفحة مستقلة لتجاوز حظر المتصفح"""
+    full_html = f"<html><body style='direction:rtl; font-family:sans-serif; padding:20px;'>{content_html}</body></html>"
+    b64 = base64.b64encode(full_html.encode()).decode()
+    return f"data:text/html;base64,{b64}"
+
+if 'report_ready' in st.session_state:
+    st.markdown("---")
+    st.subheader("🖨️ بوابة الطباعة النهائية")
+    
+    # بناء جدول البيانات بدقة لمنع دمج النصوص
+    report_items = st.session_state.report_ready
+    table_rows = "".join([
+        f"<tr>"
+        f"<td style='border:1px solid black; padding:8px;'>{item['السلعة']}</td>"
+        f"<td style='border:1px solid black; padding:8px; text-align:center;'>{item['الموجود']}</td>"
+        f"<td style='border:1px solid black; padding:8px; text-align:center;'>{item['التوصية'] if item['التوصية'] > 0 else '-'}</td>"
+        f"</tr>" 
+        for item in report_items
+    ])
+    
+    final_content = f"""
+    <div style="text-align:center; border:2px solid black; padding:20px;">
+        <h1>مخابز باب الآغا</h1>
+        <h3>جرد قسم التوست - الشفت الصباحي</h3>
+        <p>التاريخ: {datetime.date.today()}</p>
+        <table style="width:100%; border-collapse:collapse; direction:rtl;">
+            <thead>
+                <tr style="background:#eee;">
+                    <th style="border:1px solid black; padding:8px;">السلعة</th>
+                    <th style="border:1px solid black; padding:8px;">الموجود</th>
+                    <th style="border:1px solid black; padding:8px;">التوصية</th>
+                </tr>
+            </thead>
+            <tbody>{table_rows}</tbody>
+        </table>
+        <br><br>
+        <div style="text-align:left; margin-left:20px;">
+            <p>توقيع مسؤول القسم:</p>
+            <p><b>أيوب هاني</b></p>
+        </div>
+    </div>
+    """
+
+    # إنشاء رابط الصفحة المستقلة
+    href = get_print_html(final_content)
+    
+    st.markdown(f"""
+        <div style="background:#f0f2f6; padding:20px; border-radius:15px; text-align:center;">
+            <p>بسبب قيود الموبايل، يرجى الضغط على الرابط أدناه لفتح التقرير في صفحة مستقلة، ثم اختر 'طباعة' من قائمة المتصفح:</p>
+            <a href="{href}" target="_blank" style="text-decoration:none;">
+                <button style="width:100%; background:#1e3a8a; color:white; padding:15px; border-radius:10px; font-size:18px; font-weight:bold; cursor:pointer; border:none;">
+                    🔗 افتح التقرير للطباعة (نسخة الموبايل)
+                </button>
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
+
+    if st.button("✅ إنهاء الجرد"):
+        del st.session_state.report_ready
+        st.rerun()
