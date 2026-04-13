@@ -18,7 +18,7 @@ st.markdown("""
 
 # --- 2. إدارة الذاكرة (Session State) ---
 if 'items_df' not in st.session_state:
-    initial_data = [["باكيت تركي", 50], ["جرك بالحليب", 100], ["توست ابيض", 130], ["صمون شاورما", 50]]
+    initial_data = [["باكيت تركي", 50], ["جرك بالحليب", 100], ["توست ابيض", 130]]
     st.session_state.items_df = pd.DataFrame(initial_data, columns=["السلعة", "رقم الأمان"])
 
 if 'orders_df' not in st.session_state:
@@ -48,9 +48,13 @@ if menu == "📋 الجرد والطباعة":
         for i, row in st.session_state.items_df.iterrows():
             c1, c2, c3, c4 = st.columns([2, 1, 1, 2])
             with c1: st.markdown(f"**{row['السلعة']}**")
-            with c2: q = st.number_input("الموجود", min_value=0, key=f"q_{i}", label_visibility="collapsed")
-            with c3: r = st.number_input("التوصية", min_value=0, key=f"r_{i}", label_visibility="collapsed")
-            with c4: n = st.text_input("الملاحظة", key=f"n_{i}", placeholder="ملاحظة..", label_visibility="collapsed")
+                        with c2: 
+                q = st.number_input("الموجود", min_value=0, key=f"q_{i}", value=st.session_state.get(f"q_{i}", 0))
+            with c3: 
+                r = st.number_input("التوصية", min_value=0, key=f"r_{i}", value=st.session_state.get(f"r_{i}", 0))
+            with c4: 
+                n = st.text_input("الملاحظة", key=f"n_{i}", value=st.session_state.get(f"n_{i}", ""), placeholder="ملاحظة..")
+
             results.append({"السلعة": row['السلعة'], "الموجود": q, "التوصية": r, "الملاحظة": n})
         
         if st.form_submit_button("🚀 اعتماد الجرد وتوليد التقرير والمعاينة"):
