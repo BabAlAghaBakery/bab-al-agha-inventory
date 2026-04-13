@@ -60,16 +60,18 @@ st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3014/3014535.png", widt
 st.sidebar.title("نظام باب الآغا")
 menu = st.sidebar.radio("انتقل إلى:", ["📋 الجرد الصباحي", "🛒 الطلبيات والوصايا", "⚙️ إدارة السلع"])
 
-# --- قسم الجرد والتوصية (تأكد من استبدال هذا الجزء بالكامل) ---
+# --- قسم الجرد والتوصية ---
 if menu == "📋 الجرد الصباحي":
     st.markdown("<div class='main-header'><h1>🥖 جرد قسم التوست - باب الآغا</h1></div>", unsafe_allow_html=True)
     
-    # ذاكرة الجلسة لحفظ المدخلات
+    # استخدام ذاكرة الجلسة لضمان عدم ضياع البيانات عند التنقل
     if 'inventory_values' not in st.session_state: st.session_state.inventory_values = {}
     if 'rec_values' not in st.session_state: st.session_state.rec_values = {}
     if 'note_values' not in st.session_state: st.session_state.note_values = {}
 
     inventory_results = []
+    
+    st.info("💡 أدخل البيانات أدناه ثم اضغط على زر الاعتماد في الأسفل.")
     
     for i, row in df_items.iterrows():
         st.markdown(f"### 📦 {row['السلعة']}")
@@ -82,57 +84,83 @@ if menu == "📋 الجرد الصباحي":
             rec = st.number_input("التوصية", min_value=0, key=f"rec_{i}", value=st.session_state.rec_values.get(f"rec_{i}", 0))
             st.session_state.rec_values[f"rec_{i}"] = rec
         with col3:
-            note = st.text_input("ملاحظة خاصة", key=f"note_{i}", value=st.session_state.note_values.get(f"note_{i}", ""))
+            note = st.text_input("ملاحظة", key=f"note_{i}", value=st.session_state.note_values.get(f"note_{i}", ""), placeholder="أضف ملاحظة هنا...")
             st.session_state.note_values[f"note_{i}"] = note
             
-        status = "🔴 نقص" if qty <= row['رقم الأمان'] else "🟢 متوفر"
-        inventory_results.append({"السلعة": row['السلعة'], "الموجود": qty, "التوصية": rec, "الملاحظة": note, "حالة": status})
+        inventory_results.append({"السلعة": row['السلعة'], "الموجود": qty, "التوصية": rec, "الملاحظة": note})
         st.markdown("---")
 
-    if st.button("✅ اعتماد الجرد وتجهيز التقرير"):
+    if st.button("✅ اعتماد الجرد وتجهيز التقرير والواتساب"):
         st.session_state.report_ready = inventory_results
-        st.success("تم تجهيز التقرير! انتقل للأسفل للطباعة.")
+        st.success("تم التجهيز! انزل للأسفل للإرسال أو الطباعة.")
 
-# --- قسم الطباعة النهائية (يظهر تلقائياً بعد الضغط على الزر) ---
+# --- قسم الطباعة والإرسال (يظهر بعد الاعتماد) ---
 if 'report_ready' in st.session_state:
-    st.markdown("## 🖨️ بوابة الطباعة النهائية")
+    st.markdown("## 📤 خيارات التصدير (واتساب وطباعة)")
     
-    current_time = datetime.datetime.now().strftime("%I:%M %p")
     report_items = st.session_state.report_ready
+    current_time = datetime.datetime.now().strftime("%I:%M %p")
+    
+    # 1. تجهيز رسالة الواتساب الشاملة
+    wa_msg = f"📋 *تقرير جرد قسم التوست - باب الآغا*\n"
+    wa_msg += f"📅 *التاريخ:* {datetime.date.today()} | 🕒 *الوقت:* {current_time}\n"
+    wa_msg += f"👤 *المسؤول:* أيوب هاني\n"
+    wa_msg += f"━━━━━━━━━━━━━━━\n"
+    
+    for item in report_items:
+        # إرسال المواد التي بها جرد فقط لتجنب طول الرسالة الزائد، أو إرسال الكل حسب رغبتك
+        if item['الموجود'] > 0 or item['التوصية'] > 0:
+            wa_msg += f"🔹 *{item['السلعة']}*:\n"
+            wa_msg += f"   - الموجود: {item['الموجود']} | التوصية: {item['التوصية']}\n"
+            if item['الملاحظة']: wa_msg += f"   - 📝 ملاحظة: {item['الملاحظة']}\n"
+            wa_msg += f"-----------"
 
-    # بناء أسطر الجدول
+    # إضافة الوصايا والطلبيات (جدول الوصايا) للواتساب
+    if not df_orders.empty:
+        wa_msg += f"\n\n🛒 *وصايا وطلبيات إضافية:*\n"
+        for _, r in df_orders.iterrows():
+            wa_msg += f"• {r['الطلب']}: {r['التفاصيل']}\n"
+    
+    wa_msg += f"\n━━━━━━━━━━━━━━━\nتم الجرد بواسطة نظام أيوب هاني الذكي"
+
+    # زر الواتساب
+    import urllib.parse
+    encoded_msg = urllib.parse.quote(wa_msg)
+    wa_url = f"https://wa.me/9647510853103?text={encoded_msg}"
+    
+    st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25d366; color:white; padding:15px; border-radius:10px; border:none; cursor:pointer; font-size:18px; font-weight:bold;">📲 إرسال الجرد كاملاً عبر الواتساب</button></a>', unsafe_allow_html=True)
+
+    # 2. تجهيز الطباعة (حل مشكلة اللغة نهائياً)
     table_rows = "".join([
-        f"<tr>"
-        f"<td style='border:1px solid black; padding:8px;'>{item['السلعة']}</td>"
-        f"<td style='border:1px solid black; padding:8px; text-align:center;'>{item['الموجود']}</td>"
-        f"<td style='border:1px solid black; padding:8px; text-align:center;'>{item['التوصية']}</td>"
-        f"<td style='border:1px solid black; padding:8px;'>{item['الملاحظة']}</td>"
-        f"</tr>"
-        for item in report_items
+        f"<tr><td style='border:1px solid black; padding:8px;'>{item['السلعة']}</td><td style='border:1px solid black; padding:8px; text-align:center;'>{item['الموجود']}</td><td style='border:1px solid black; padding:8px; text-align:center;'>{item['التوصية']}</td><td style='border:1px solid black; padding:8px;'>{item['الملاحظة']}</td></tr>"
+        for item in report_items if item['الموجود'] > 0 or item['التوصية'] > 0
     ])
 
-    # محتوى التقرير للطباعة
-    final_content = f"""
-    <div style="direction:rtl; text-align:center; font-family:Arial; border:2px solid black; padding:20px;">
-        <h1>مخابز باب الآغا 🥖</h1>
-        <p>التاريخ: {datetime.date.today()} | الوقت: {current_time}</p>
-        <hr>
-        <table style="width:100%; border-collapse:collapse;">
-            <thead>
-                <tr style="background:#eee;">
-                    <th>السلعة</th><th>الموجود</th><th>التوصية</th><th>الملاحظة</th>
-                </tr>
-            </thead>
-            <tbody>{table_rows}</tbody>
-        </table>
-        <br>
-        <p style="text-align:left;">توقيع المسؤول: <b>أيوب هاني</b></p>
-    </div>
+    final_print_html = f"""
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+    <head><meta charset="UTF-8"></head>
+    <body style="font-family:Arial; direction:rtl; text-align:right; padding:20px;">
+        <div style="border:2px solid black; padding:15px; text-align:center;">
+            <h1>مخابز باب الآغا 🥖</h1>
+            <p>التاريخ: {datetime.date.today()} | الوقت: {current_time}</p>
+            <p>المسؤول: أيوب هاني</p>
+            <hr>
+            <table style="width:100%; border-collapse:collapse;">
+                <thead><tr style="background:#eee;"><th>السلعة</th><th>موجود</th><th>طلب</th><th>ملاحظة</th></tr></thead>
+                <tbody>{table_rows}</tbody>
+            </table>
+        </div>
+    </body>
+    </html>
     """
-
-    # رابط الطباعة للموبايل
-    import base64
-    b64 = base64.b64encode(final_content.encode('utf-8')).decode()
-    href = f"data:text/html;charset=utf-8;base64,{b64}"
     
-    st.markdown(f'<a href="{href}" target="_blank"><button style="width:100%; background:#1e3a8a; color:white; padding:15px; border-radius:10px; cursor:pointer;">📄 افتح التقرير للطباعة</button></a>', unsafe_allow_html=True)
+    import base64
+    b64_print = base64.b64encode(final_print_html.encode('utf-8')).decode()
+    print_href = f"data:text/html;charset=utf-8;base64,{b64_print}"
+    
+    st.markdown(f'<a href="{print_href}" target="_blank"><button style="width:100%; background:#1e3a8a; color:white; padding:15px; border-radius:10px; border:none; cursor:pointer; margin-top:10px;">🖨️ فتح نسخة الطباعة (A4)</button></a>', unsafe_allow_html=True)
+
+    if st.button("❌ إنهاء العملية"):
+        del st.session_state.report_ready
+        st.rerun()
