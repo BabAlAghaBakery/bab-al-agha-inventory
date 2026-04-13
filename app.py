@@ -172,10 +172,22 @@ st.markdown("<div class='footer-rights'>حقوق النظام محفوظة لـ 
 import base64
 
 def get_print_html(content_html):
-    """تحويل المحتوى إلى رابط صفحة مستقلة لتجاوز حظر المتصفح"""
-    full_html = f"<html><body style='direction:rtl; font-family:sans-serif; padding:20px;'>{content_html}</body></html>"
-    b64 = base64.b64encode(full_html.encode()).decode()
-    return f"data:text/html;base64,{b64}"
+    """هذه الدالة المحدثة التي تحل مشكلة الرموز الغريبة"""
+    full_html = f"""
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+    <head>
+        <meta charset="UTF-8">
+    </head>
+    <body style="font-family: sans-serif; direction: rtl; text-align: right;">
+        {content_html}
+    </body>
+    </html>
+    """
+    # تحويل النص إلى ترميز UTF-8 لضمان ظهور اللغة العربية
+    b64 = base64.b64encode(full_html.encode('utf-8')).decode()
+    return f"data:text/html;charset=utf-8;base64,{b64}"
+
 
 if 'report_ready' in st.session_state:
     st.markdown("---")
