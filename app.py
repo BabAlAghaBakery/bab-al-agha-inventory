@@ -60,29 +60,40 @@ st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3014/3014535.png", widt
 st.sidebar.title("نظام باب الآغا")
 menu = st.sidebar.radio("انتقل إلى:", ["📋 الجرد الصباحي", "🛒 الطلبيات والوصايا", "⚙️ إدارة السلع"])
 
-# --- 4. صفحة الجرد الصباحي (الأساسية) ---
-if menu == "📋 الجرد الصباحي":
-    st.markdown("<div class='main-header'><h1>📋 جرد قسم التوست - الشفت الصباحي</h1></div>", unsafe_allow_html=True)
+# --- تحديث قسم الجرد لحفظ البيانات ومنع الحذف ---
+if menu == "📋 الجرد والتوصية":
+    st.markdown("<div class='main-header'><h1>🥖 جرد قسم التوست - باب الآغا</h1></div>", unsafe_allow_html=True)
     
-    st.subheader("📝 أدخل الكميات المتوفرة على الرفوف:")
-    inventory_data = []
-    recommendations = {} # لتخزين الكميات المطلوب توصيتها
-    
-    # تقسيم السلع إلى أعمدة لتسهيل الإدخال من الموبايل
-    for i, row in df_items.iterrows():
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            qty = st.number_input(f"{row['السلعة']} (الأمان: {row['رقم الأمان']})", min_value=0, key=f"item_{i}", step=1)
-        with col2:
-            # فقرة توصية السلعة (الأعداد التي تريد طلبها)
-            rec_qty = st.number_input("توصية بالطلب", min_value=0, key=f"rec_{i}", step=1)
-        
-        status = "⚠️ نقص" if qty <= row['رقم الأمان'] else "✅ كافٍ"
-        inventory_data.append({"السلعة": row['السلعة'], "الموجود": qty, "الحالة": status, "التوصية": rec_qty})
+    # التأكد من وجود مكان لحفظ البيانات في الذاكرة
+    if 'inventory_values' not in st.session_state:
+        st.session_state.inventory_values = {}
+    if 'rec_values' not in st.session_state:
+        st.session_state.rec_values = {}
 
-    if st.button("📄 توليد تقرير A4 النهائي"):
-        st.session_state.report_ready = inventory_data
-        st.rerun()
+    inventory_results = []
+    st.subheader("📝 الجرد الفعلي والتوصيات:")
+    
+    for i, row in df_items.iterrows():
+        c1, c2 = st.columns([2, 1])
+        
+        # استرجاع القيم السابقة إن وجدت لمنع تصفير الجدول
+        prev_inv = st.session_state.inventory_values.get(f"inv_{i}", 0)
+        prev_rec = st.session_state.rec_values.get(f"rec_{i}", 0)
+        
+        with c1:
+            qty = st.number_input(f"{row['السلعة']}", min_value=0, value=prev_inv, key=f"inv_{i}")
+            st.session_state.inventory_values[f"inv_{i}"] = qty # حفظ القيمة فوراً
+            
+        with c2:
+            rec = st.number_input("العدد المطلوب", min_value=0, value=prev_rec, key=f"rec_{i}")
+            st.session_state.rec_values[f"rec_{i}"] = rec # حفظ القيمة فوراً
+        
+        status = "🔴 نقص" if qty <= row['رقم الأمان'] else "🟢 متوفر"
+        inventory_results.append({"الاسم": row['السلعة'], "موجود": qty, "حالة": status, "طلب": rec})
+
+    # حفظ النتائج النهائية لاستخدامها في الطباعة
+    st.session_state.report_ready = inventory_results
+
 
     # عرض ورقة الـ A4
     if 'report_ready' in st.session_state:
