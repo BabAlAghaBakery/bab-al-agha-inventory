@@ -190,8 +190,8 @@ def get_print_html(content_html):
 
 
 if 'report_ready' in st.session_state:
-    st.markdown("---")
-        st.subheader("🖨️ بوابة الطباعة النهائية")
+  st.markdown("---")
+  st.subheader("🖨️ بوابة الطباعة النهائية")
 
     # 1. بناء جدول السلع (النواقص والتوصيات فقط)
     table_rows = "".join([
