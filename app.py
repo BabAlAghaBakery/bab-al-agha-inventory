@@ -103,8 +103,10 @@ if menu == "📋 الجرد الصباحي":
     col_p1, col_p2 = st.columns(2)
     
     with col_p1:
-        if st.button("🖨️ فتح نافذة الطباعة"):
-            st.markdown('<script>window.print();</script>', unsafe_allow_html=True)
+                if st.button("🖨️ فتح نافذة الطباعة"):
+            js = "window.parent.focus(); window.parent.print();"
+            st.markdown(f'<img src="x" onerror="{js}" style="display:none;">', unsafe_allow_html=True)
+
             
     with col_p2:
         wa_url = f"https://wa.me/9647510853103?text={urllib.parse.quote(short_summary)}"
