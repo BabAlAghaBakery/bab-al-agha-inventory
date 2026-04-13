@@ -104,8 +104,11 @@ if menu == "📋 الجرد الصباحي":
     
     with col_p1:
                 if st.button("🖨️ فتح نافذة الطباعة"):
+                            if st.button("🖨️ فتح نافذة الطباعة"):
             js = "window.parent.focus(); window.parent.print();"
             st.markdown(f'<img src="x" onerror="{js}" style="display:none;">', unsafe_allow_html=True)
+
+            
 
             
     with col_p2:
