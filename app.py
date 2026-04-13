@@ -149,9 +149,15 @@ if menu == "📋 الجرد الصباحي":
         wa_url = f"https://wa.me/9647510853103?text={urllib.parse.quote(full_wa_msg)}"
         st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25d366; color:white; padding:15px; border-radius:10px; border:none; cursor:pointer; font-weight:bold;">📲 إرسال الجرد كاملاً عبر الواتساب</button></a>', unsafe_allow_html=True)
 
-        # زر الطباعة A4 (حل مشكلة اللغة النهائي)
-        b64 = base64.b64encode(report_template.encode('utf-8')).decode()
-        st.markdown(f'<a href="data:text/html;charset=utf-8;base64,{b64}" target="_blank"><button style="width:100%; background:#1e3a8a; color:white; padding:15px; border-radius:10px; border:none; cursor:pointer; margin-top:10px;">🖨️ فتح نسخة الطباعة (A4)</button></a>', unsafe_allow_html=True)
+        # تحويل المحتوى إلى Base64 مع إضافة تعريف اللغة العربية UTF-8
+b64 = base64.b64encode(report_template.encode('utf-8')).decode()
+
+# السطر المهم جداً لحل مشكلة الرموز الغريبة:
+href = f"data:text/html;charset=utf-8;base64,{b64}"
+
+# عرض الزر
+st.markdown(f'<a href="{href}" target="_blank"><button style="width:100%; background:#1e3a8a; color:white; padding:15px; border-radius:10px; border:none; cursor:pointer; margin-top:10px; font-weight:bold; font-size:16px;">🖨️ فتح نسخة الطباعة (A4)</button></a>', unsafe_allow_html=True)
+
 
 # --- 5. قسم الطلبيات والوصايا ---
 elif menu == "🛒 الطلبيات والوصايا":
