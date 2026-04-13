@@ -60,9 +60,15 @@ st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3014/3014535.png", widt
 st.sidebar.title("نظام باب الآغا")
 menu = st.sidebar.radio("انتقل إلى:", ["📋 الجرد الصباحي", "🛒 الطلبيات والوصايا", "⚙️ إدارة السلع"])
 
-# --- قسم الجرد والتوصية ---
-if menu == "📋 الجرد الصباحي":
-    st.markdown("<div class='main-header'><h1>🥖 جرد قسم التوست - باب الآغا</h1></div>", unsafe_allow_html=True)
+if menu == "🛒 الطلبيات":
+    st.header("📋 جدول الطلبيات")
+    # تأكد من وجود هذا السطر ليظهر الجدول
+    st.table(df_orders) 
+
+        df_orders = pd.read_csv("special_orders.csv") # تأكد من اسم ملفك
+        st.table(df_orders)
+    except:
+        st.warning("لا توجد طلبات مسجلة حالياً.")
     
     # استخدام ذاكرة الجلسة لضمان عدم ضياع البيانات عند التنقل
     if 'inventory_values' not in st.session_state: st.session_state.inventory_values = {}
@@ -99,7 +105,7 @@ if 'report_ready' in st.session_state:
     st.markdown("## 📤 خيارات التصدير (واتساب وطباعة)")
     
     report_items = st.session_state.report_ready
-    current_time = datetime.datetime.now().strftime("%I:%M %p")
+    current_time = (datetime.datetime.now() + datetime.timedelta(hours=3)).strftime("%I:%M %p")
     
     # 1. تجهيز رسالة الواتساب الشاملة
     wa_msg = f"📋 *تقرير جرد قسم التوست - باب الآغا*\n"
@@ -109,6 +115,7 @@ if 'report_ready' in st.session_state:
     
     for item in report_items:
         # إرسال المواد التي بها جرد فقط لتجنب طول الرسالة الزائد، أو إرسال الكل حسب رغبتك
+        st.session_state[f"rec_{i}"] = rec
         if item['الموجود'] > 0 or item['التوصية'] > 0:
             wa_msg += f"🔹 *{item['السلعة']}*:\n"
             wa_msg += f"   - الموجود: {item['الموجود']} | التوصية: {item['التوصية']}\n"
