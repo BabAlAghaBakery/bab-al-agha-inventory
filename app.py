@@ -1,105 +1,168 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
+import datetime
+import os
 import urllib.parse
 
-# إعدادات الصفحة
-st.set_page_config(page_title="جرد قسم التوست - أيوب هاني", layout="wide")
+# --- 1. إعدادات المظهر العام (ذوق احترافي) ---
+st.set_page_config(page_title="جرد قسم التوست - باب الآغا", layout="wide")
 
-# توقيت العراق (UTC+3)
-iraq_time = datetime.utcnow() + timedelta(hours=3)
-current_date = iraq_time.strftime("%Y-%m-%d")
-current_time = iraq_time.strftime("%H:%M:%S")
-
-# حقوق الملكية في التذييل
-footer = """
+st.markdown("""
     <style>
-    .footer { position: fixed; bottom: 0; width: 100%; text-align: center; padding: 10px; background: #f1f1f1; }
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+    html, body, [class*="st-"] { font-family: 'Cairo', sans-serif; text-align: right; direction: rtl; }
+    .main-header { background-color: #1e3a8a; color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; }
+    .footer-rights { text-align: center; color: #64748b; font-size: 12px; margin-top: 50px; }
+    .stButton>button { width: 100%; border-radius: 10px; font-weight: bold; }
+    .print-paper { background: white; padding: 40px; border: 2px solid #333; color: black; line-height: 1.5; font-family: 'Cairo', sans-serif; }
+    @media print { .no-print { display: none !important; } }
     </style>
-    <div class="footer">حقوق الطبع محفوظة لـ أيوب هاني © 2026</div>
-"""
-st.markdown(footer, unsafe_allow_html=True)
-# تهيئة البيانات الأساسية (قائمة السلع التي زودتني بها)
-if 'inventory' not in st.session_state:
-    data = {
-        "السلعة": ["باكيت تركي", "باكيت فرنسي اسمر", "باكيت فرنسي ابيض", "صمون شاورما", "صمون سداسي", "صمون كنتاكي حمام", "صمون كنتاكي دائري", "صمون مني بركر", "صمون بركر وسط", "صمون اسمر سداسي", "صمون كنتاكي اسمر", "صمون بطاطا", "صمون بركر دبل", "جرك بالحليب", "جرك تمر", "جرك حلقوم", "جرك بالجبن", "جرك كاكاو (علبة)", "جرك كاكاو ( قطع )", "جرك برازيلي", "جرك بربراوزا", "جرك مغربية", "خبز سمسم حلو", "خبز شعير 7 حبات", "خبز شعير اصلي", "خبز تركي بالجبن", "خبز محيرجه", "لفه خميرة", "ملفوف دارسين", "توست اسمر ساده", "توست اسمر 7 حبات", "توست اسمر شوفان", "توست ابيض", "توست شعير 7 حبات", "توست شعير اصلي", "توست جاودار", "توست بطاطا", "توست كاكاو", "توست فراولة", "توست حلبي", "توست طماطم", "توست زيتون", "توست بالحليب", "توست بريوش كاكاو", "توست جبن", "خلية نحل كاكاو", "خلية نحل كاكاو محشية نوتيلا", "خلية نحل جبن", "خلية نحل بالحليب المكثف", "خلية نحل محشية نوتيلا", "خلية نحل تمر وحلقوم", "لقمة صغير", "كرواسون كرز", "كرواسون نستله", "كرواسون ابيض", "كرواسون بالزبده الحيوانيه", "كيك جنين الحنطة مخلوط", "كيك جنين الحنطة اصلي", "سميط شعير", "محلب تركي", "محلب تمر", "محلب حلقوم", "محلب مبروش", "محلب سمسم"],
-        "حد الأمان": [50, 50, 50, 50, 50, 25, 30, 30, 20, 25, 25, 40, 30, 100, 40, 40, 60, 70, 30, 150, 70, 15, 40, 60, 100, 50, 40, 70, 70, 80, 50, 50, 130, 45, 45, 25, 40, 30, 30, 20, 20, 30, 30, 30, 50, 70, 40, 50, 70, 30, 70, 10, 150, 200, 800, 50, 100, 60, 60, 10, 10, 10, 10, 10],
-        "الكمية الحالية": [0]*64
-    }
-    st.session_state.inventory = pd.DataFrame(data)
+    """, unsafe_allow_html=True)
 
-if 'orders' not in st.session_state:
-    st.session_state.orders = []
-st.title("🍞 جرد قسم التوست - الشفت الصباحي")
-st.subheader(f"المسؤول: أيوب هاني | التاريخ: {current_date} | الوقت: {current_time}")
+# --- 2. البيانات الأولية (القائمة التي أرسلتها) ---
+INITIAL_ITEMS = [
+    ["باكيت تركي", 50], ["باكيت فرنسي اسمر", 50], ["باكيت فرنسي ابيض", 50],
+    ["صمون شاورما", 50], ["صمون سداسي", 50], ["صمون كنتاكي حمام", 25],
+    ["صمون كنتاكي دائري", 30], ["صمون مني بركر", 30], ["صمون بركر وسط", 20],
+    ["صمون اسمر سداسي", 25], ["صمون كنتاكي اسمر", 25], ["صمون بطاطا", 40],
+    ["صمون بركر دبل", 30], ["جرك بالحليب", 100], ["جرك تمر", 40],
+    ["جرك حلقوم", 40], ["جرك بالجبن", 60], ["جرك كاكاو (علبة)", 70],
+    ["جرك كاكاو ( قطع )", 30], ["جرك برازيلي", 150], ["جرك بربراوزا", 70],
+    ["جرك مغربية", 15], ["خبز سمسم حلو", 40], ["خبز شعير 7 حبات", 60],
+    ["خبز شعير اصلي", 100], ["خبز تركي بالجبن", 50], ["خبز محيرجه", 40],
+    ["لفه خميرة", 70], ["ملفوف دارسين", 70], ["توست اسمر ساده", 80],
+    ["توست اسمر 7 حبات", 50], ["توست اسمر شوفان", 50], ["توست ابيض", 130],
+    ["توست شعير 7 حبات", 45], ["توست شعير اصلي", 45], ["توست جاودار", 25],
+    ["توست بطاطا", 40], ["توست كاكاو", 30], ["توست فراولة", 30],
+    ["توست حلبي", 20], ["توست طماطم", 20], ["توست زيتون", 30],
+    ["توست بالحليب", 30], ["توست بريوش كاكاو", 30], ["توست جبن", 50],
+    ["خلية نحل كاكاو", 70], ["خلية نحل كاكاو نوتيلا", 40], ["خلية نحل جبن", 50],
+    ["خلية نحل حليب مكثف", 70], ["خلية نحل نوتيلا", 30], ["خلية نحل تمر وحلقوم", 70],
+    ["لقمة صغير", 10], ["كرواسون كرز", 150], ["كرواسون نستله", 200],
+    ["كرواسون ابيض", 800], ["كرواسون زبده حيوانيه", 50], ["كيك جنين حنطة مخلوط", 100],
+    ["كيك جنين حنطة اصلي", 60], ["سميط شعير", 60], ["محلب تركي", 30],
+    ["محلب تمر", 30], ["محلب حلقوم", 30], ["محلب مبروش", 30], ["محلب سمسم", 30]
+]
 
-tabs = st.tabs(["📊 جدول الجرد", "📋 إدارة السلع", "📦 الطلبيات والتوصيات", "🖨️ تقرير A4 & واتساب"])
+DB_FILE = "bakery_inventory.csv"
+ORDERS_FILE = "special_orders.csv"
 
-with tabs[0]:
-    st.markdown("### حالة السلع الحالية")
-    # عرض الجدول مع إمكانية التعديل
-    edited_df = st.data_editor(st.session_state.inventory, use_container_width=True)
+if not os.path.exists(DB_FILE):
+    pd.DataFrame(INITIAL_ITEMS, columns=["السلعة", "رقم الأمان"]).to_csv(DB_FILE, index=False)
+if not os.path.exists(ORDERS_FILE):
+    pd.DataFrame(columns=["الطلب", "التفاصيل"]).to_csv(ORDERS_FILE, index=False)
+
+df_items = pd.read_csv(DB_FILE)
+df_orders = pd.read_csv(ORDERS_FILE)
+
+# --- 3. تصميم القائمة الجانبية ---
+st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3014/3014535.png", width=100)
+st.sidebar.title("نظام باب الآغا")
+menu = st.sidebar.radio("انتقل إلى:", ["📋 الجرد الصباحي", "🛒 الطلبيات والوصايا", "⚙️ إدارة السلع"])
+
+# --- 4. صفحة الجرد الصباحي (الأساسية) ---
+if menu == "📋 الجرد الصباحي":
+    st.markdown("<div class='main-header'><h1>📋 جرد قسم التوست - الشفت الصباحي</h1></div>", unsafe_allow_html=True)
     
-    # حساب حالة الأمان
-    def check_safety(row):
-        if row['الكمية الحالية'] >= row['حد الأمان']:
-            return "✅ كافية"
-        return "⚠️ غير كافية"
+    st.subheader("📝 أدخل الكميات المتوفرة على الرفوف:")
+    inventory_data = []
+    recommendations = {} # لتخزين الكميات المطلوب توصيتها
     
-    edited_df['الحالة'] = edited_df.apply(check_safety, axis=1)
-    st.session_state.inventory = edited_df
-    st.dataframe(edited_df.style.applymap(lambda x: 'color: red' if x == "⚠️ غير كافية" else 'color: green', subset=['الحالة']))
+    # تقسيم السلع إلى أعمدة لتسهيل الإدخال من الموبايل
+    for i, row in df_items.iterrows():
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            qty = st.number_input(f"{row['السلعة']} (الأمان: {row['رقم الأمان']})", min_value=0, key=f"item_{i}", step=1)
+        with col2:
+            # فقرة توصية السلعة (الأعداد التي تريد طلبها)
+            rec_qty = st.number_input("توصية بالطلب", min_value=0, key=f"rec_{i}", step=1)
+        
+        status = "⚠️ نقص" if qty <= row['رقم الأمان'] else "✅ كافٍ"
+        inventory_data.append({"السلعة": row['السلعة'], "الموجود": qty, "الحالة": status, "التوصية": rec_qty})
 
-with tabs[1]:
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("### ➕ إضافة سلعة جديدة")
-        new_item = st.text_input("اسم السلعة")
-        new_safety = st.number_input("حد الأمان", min_value=1)
-        if st.button("إضافة"):
-            new_row = pd.DataFrame({"السلعة": [new_item], "حد الأمان": [new_safety], "الكمية الحالية": [0]})
-            st.session_state.inventory = pd.concat([st.session_state.inventory, new_row], ignore_index=True)
-            st.success("تمت الإضافة")
-            
-    with col2:
-        st.markdown("### 🗑️ حذف سلعة")
-        item_to_delete = st.selectbox("اختر السلعة للحذف", st.session_state.inventory['السلعة'])
-        if st.button("حذف"):
-            st.session_state.inventory = st.session_state.inventory[st.session_state.inventory['السلعة'] != item_to_delete]
-            st.warning("تم حذف السلعة")
-with tabs[2]:
-    st.markdown("### 📝 تسجيل طلبية أو توصية")
-    item_rec = st.selectbox("السلعة المطلوبة", st.session_state.inventory['السلعة'])
-    qty_rec = st.number_input("العدد المطلوب (توصية)", min_value=1)
-    note = st.text_area("تفاصيل إضافية")
-    if st.button("حفظ التوصية"):
-        st.session_state.orders.append({"السلعة": item_rec, "العدد": qty_rec, "التفاصيل": note})
-        st.info("تمت إضافة التوصية للتقرير")
+    if st.button("📄 توليد تقرير A4 النهائي"):
+        st.session_state.report_ready = inventory_data
+        st.rerun()
 
-with tabs[3]:
-    st.markdown("### 📄 معاينة ورقة الجرد (تنسيق A4)")
-    report_content = f"""
-    جرد قسم التوست - الشفت الصباحي
-    ---------------------------
-    المسؤول: أيوب هاني
-    التاريخ: {current_date}
-    الوقت: {current_time}
-    ---------------------------
-    السلع غير الكافية (تحتاج تعويض):
-    """
-    short_items = st.session_state.inventory[st.session_state.inventory['الكمية الحالية'] < st.session_state.inventory['حد الأمان']]
-    for idx, row in short_items.iterrows():
-        report_content += f"\n- {row['السلعة']}: الحالي ({row['الكمية الحالية']}) / الأمان ({row['حد الأمان']})"
-    
-    report_content += "\n\nالتوصيات والطلبيات الحالية:"
-    for order in st.session_state.orders:
-        report_content += f"\n- {order['السلعة']}: العدد {order['العدد']} ({order['التفاصيل']})"
+    # عرض ورقة الـ A4
+    if 'report_ready' in st.session_state:
+        st.divider()
+        report_html = f"""
+        <div id="printable_area" class="print-paper">
+            <h1 style="text-align:center; margin:0;">مخابز باب الآغا 🥖</h1>
+            <h2 style="text-align:center; margin:5px;">جرد قسم التوست</h2>
+            <p style="text-align:center;"><b>الشفت الصباحي | التاريخ: {datetime.date.today()}</b></p>
+            <hr>
+            <table style="width:100%; border-collapse: collapse; text-align: right;">
+                <tr style="background-color: #f2f2f2;">
+                    <th style="border: 1px solid black; padding: 8px;">اسم السلعة</th>
+                    <th style="border: 1px solid black; padding: 8px;">الكمية الموجودة</th>
+                    <th style="border: 1px solid black; padding: 8px;">الحالة</th>
+                    <th style="border: 1px solid black; padding: 8px;">الكمية المطلوبة (التوصية)</th>
+                </tr>
+                {"".join([f"<tr><td style='border: 1px solid black; padding: 8px;'>{item['السلعة']}</td><td style='border: 1px solid black; padding: 8px;'>{item['الموجود']}</td><td style='border: 1px solid black; padding: 8px; color:{'red' if item['الحالة']=='⚠️ نقص' else 'black'}; font-weight:bold;'>{item['الحالة']}</td><td style='border: 1px solid black; padding: 8px; font-weight:bold;'>{item['التوصية'] if item['التوصية'] > 0 else '-'}</td></tr>" for item in st.session_state.report_ready])}
+            </table>
+            <br>
+            <h4>📋 الطلبيات والوصايا الإضافية:</h4>
+            <ul>
+                {"".join([f"<li><b>{r['الطلب']}:</b> {r['التفاصيل']}</li>" for _, r in df_orders.iterrows()]) if not df_orders.empty else "<li>لا توجد وصايا إضافية</li>"}
+            </ul>
+            <br><br>
+            <div style="display: flex; justify-content: space-between;">
+                <p><b>إدارة مخابز باب الآغا</b></p>
+                <div style="text-align: left;">
+                    <p><b>توقيع مسؤول القسم:</b></p>
+                    <p>أيوب هاني</p>
+                </div>
+            </div>
+        </div>
+        """
+        st.markdown(report_html, unsafe_allow_html=True)
+        
+        # أزرار الإجراءات
+        st.button("🖨️ طباعة التقرير (A4)", on_click=lambda: st.write('<script>window.print()</script>', unsafe_allow_html=True))
+        
+        # رابط الواتساب
+        wa_msg = f"تقرير جرد باب الآغا - قسم التوست\nالمسؤول: أيوب هاني\nالتاريخ: {datetime.date.today()}\nلقد تم إكمال الجرد بنجاح."
+        wa_url = f"https://wa.me/9647510853103?text={urllib.parse.quote(wa_msg)}"
+        st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background-color:#25d366; color:white; padding:15px; border-radius:10px; border:none; cursor:pointer; font-weight:bold;">📲 إرسال إشعار عبر الواتساب</button></a>', unsafe_allow_html=True)
 
-    st.text_area("معاينة النص", report_content, height=300)
+# --- 5. صفحة الطلبيات والوصايا ---
+elif menu == "🛒 الطلبيات والوصايا":
+    st.header("📌 تسجيل الطلبيات لضمان عدم النسيان")
+    with st.form("new_order"):
+        o_name = st.text_input("اسم صاحب الطلبية أو الجهة")
+        o_text = st.text_area("تفاصيل الوصية (مثلاً: محتاجين 50 كيس توست إضافي)")
+        if st.form_submit_button("حفظ الوصية"):
+            new_row = pd.DataFrame([[o_name, o_text]], columns=df_orders.columns)
+            pd.concat([df_orders, new_row]).to_csv(ORDERS_FILE, index=False)
+            st.rerun()
     
-    # رابط الواتساب
-    phone = "07510853103"
-    msg = urllib.parse.quote(report_content)
-    whatsapp_url = f"https://wa.me/{phone}?text={msg}"
+    st.subheader("📋 الوصايا الحالية:")
+    for i, row in df_orders.iterrows():
+        st.warning(f"🔔 {row['الطلب']}: {row['التفاصيل']}")
+        if st.button(f"✅ تم الإنجاز - حذف", key=f"done_{i}"):
+            df_orders.drop(i).to_csv(ORDERS_FILE, index=False)
+            st.rerun()
+
+# --- 6. صفحة إدارة السلع ---
+elif menu == "⚙️ إدارة السلع":
+    st.header("⚙️ تعديل قائمة السلع (إضافة أو حذف)")
+    with st.form("add_item"):
+        n_name = st.text_input("اسم السلعة الجديدة")
+        n_limit = st.number_input("حد الأمان", min_value=1, value=50)
+        if st.form_submit_button("➕ إضافة"):
+            new_item = pd.DataFrame([[n_name, n_limit]], columns=df_items.columns)
+            pd.concat([df_items, new_item]).to_csv(DB_FILE, index=False)
+            st.rerun()
     
-    st.markdown(f'<a href="{whatsapp_url}" target="_blank"><button style="background-color:#25D366; color:white; padding:10px; border-radius:5px; border:none; cursor:pointer;">📲 تحويل الجرد إلى واتساب</button></a>', unsafe_allow_html=True)
+    st.subheader("🗑️ حذف سلعة من القائمة:")
+    for i, row in df_items.iterrows():
+        c1, c2 = st.columns([3, 1])
+        c1.write(f"{row['السلعة']} (حد الأمان: {row['رقم الأمان']})")
+        if c2.button("حذف", key=f"del_item_{i}"):
+            df_items.drop(i).to_csv(DB_FILE, index=False)
+            st.rerun()
+
+# --- الحقوق في الأسفل ---
+st.markdown("<div class='footer-rights'>حقوق النظام محفوظة لـ مسؤول القسم: أيوب هاني © 2026</div>", unsafe_allow_html=True)
